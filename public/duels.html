@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Duels de Titres</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #121212; color: white; text-align: center; }
+    .progress-bar { width: 80%; background-color: grey; margin: 20px auto; height: 20px; border-radius: 10px; overflow: hidden; }
+    .progress { height: 100%; background-color: green; width: 0%; transition: width 0.5s; }
+    .duel-container { display: flex; justify-content: space-around; max-width: 800px; margin: auto; }
+    .track { width: 45%; background: #1e1e1e; padding: 10px; border-radius: 10px; cursor: pointer; }
+    .track:hover { transform: scale(1.05); }
+    .track img { width: 100%; border-radius: 8px; }
+    .btn { margin-top: 20px; padding: 10px 20px; font-size: 1rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Duels de Titres</h1>
+  <div class="progress-bar">
+    <div class="progress" id="progress"></div>
+  </div>
+  <div class="duel-container" id="duelContainer"></div>
+  <button class="btn" onclick="window.location.href='/ranking.html?access_token=' + accessToken">Voir le classement</button>
+
+  <script>
+    // Récupérer le token d'accès depuis l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get("access_token");
+
+    // Appeler la route pour générer les duels si nécessaire
+    async function generateDuels() {
+      const res = await fetch(`/generate-duels?access_token=${accessToken}`);
+      const data = await res.json();
+      console.log("Duels générés :", data);
+    }
+
+    // Mettre à jour la barre de progression
+    async function updateProgress() {
+      const res = await fetch("/progress");
+      const data = await res.json();
+      document.getElementById("progress").style.width = data.progress + "%";
+      const duelCount = document.createElement("p");
+      duelCount.textContent = `Duels faits : ${data.completed} / ${data.total}`;
+      //console.log("Progression :", data);
+      if (document.getElementById("duelCount")) {
+        document.getElementById("duelCount").remove();
+      }
+      duelCount.id = "duelCount";
+      document.body.insertBefore(duelCount, document.getElementById("duelContainer"));
+    }
+
+    // Charger le prochain duel
+    async function loadNextDuel() {
+      const res = await fetch("/next-duel");
+      const duel = await res.json();
+      const duelContainer = document.getElementById("duelContainer");
+      duelContainer.innerHTML = "";
+
+      if (duel.message) {
+        duelContainer.innerHTML = `<h2>${duel.message}</h2>`;
+        return;
+      }
+
+      ["track1", "track2"].forEach(trackKey => {
+        const track = duel[trackKey];
+        const trackDiv = document.createElement("div");
+        trackDiv.className = "track";
+
+        // On crée un conteneur pour la zone de vote (image, titre, artiste)
+        // et on ajoute un bouton séparé pour écouter la musique.
+        trackDiv.innerHTML = `
+          <div class="vote-area">
+            <img src="${track.image}" alt="${track.title}">
+            <h3>${track.title}</h3>
+            <p>${track.artist}</p>
+          </div>
+          <button class="listen-btn">
+            <a href="${track.link}" target="_blank">🎵 Écouter</a>
+          </button>
+        `;
+
+        // La zone de vote déclenche le vote lorsqu'on clique dessus.
+        const voteArea = trackDiv.querySelector(".vote-area");
+        voteArea.addEventListener("click", () => vote(duel.id, track.id));
+
+        // Empêche le clic sur le bouton d'écoute de remonter vers le vote.
+        const listenBtn = trackDiv.querySelector(".listen-btn");
+        listenBtn.addEventListener("click", (e) => e.stopPropagation());
+
+        duelContainer.appendChild(trackDiv);
+      });
+      updateProgress();
+    }
+
+    // Envoi du vote
+    async function vote(duelId, winnerId) {
+      await fetch("/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duelId, winnerId })
+      });
+      loadNextDuel();
+    }
+
+    // Fonction d'initialisation
+    async function init() {
+      // Génère les duels à partir de vos titres likés
+      await generateDuels();
+      // Puis charge le premier duel
+      loadNextDuel();
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classement des Titres</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #121212; color: white; text-align: center; }
+    .result-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px; }
+    .track { background: #1e1e1e; border-radius: 10px; padding: 15px; width: 200px; text-align: center; }
+    .track img { width: 100%; border-radius: 8px; }
+    .btn { margin-top: 20px; padding: 10px 20px; font-size: 1rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Classement des Titres</h1>
+  <div class="result-container" id="resultContainer"></div>
+  <button class="btn" onclick="window.location.href='/duels.html'">Retour aux duels</button>
+  <!-- Bouton pour créer la playlist -->
+  <button class="btn" id="createPlaylistBtn">Créer la playlist Spotify</button>
+
+  <script>
+    // Charger le classement et l'afficher
+    async function loadRanking() {
+      const res = await fetch("/ranking");
+      const data = await res.json();
+      const container = document.getElementById("resultContainer");
+      container.innerHTML = "";
+      data.ranking.forEach(track => {
+        const div = document.createElement("div");
+        div.className = "track";
+        div.innerHTML = `
+          <img src="${track.image}" alt="${track.title}">
+          <h3>${track.title}</h3>
+          <p>${track.artist}</p>
+          <p>Points: ${track.score}</p>
+          <a href="${track.link}" target="_blank">Écouter</a>
+        `;
+        container.appendChild(div);
+      });
+    }
+    loadRanking();
+
+    // Gestion du clic sur le bouton pour créer la playlist
+    document.getElementById("createPlaylistBtn").addEventListener("click", async () => {
+      // Récupérer l'access token depuis l'URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const accessToken = urlParams.get("access_token");
+      console.log(accessToken);
+      if (!accessToken) {
+        return alert("Access token manquant.");
+      }
+      try {
+        const res = await fetch("/create-playlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: accessToken })
+        });
+        const data = await res.json();
+        if (data.playlistUrl) {
+          alert("Playlist créée avec succès !");
+          window.open(data.playlistUrl, "_blank");
+        } else {
+          alert("Erreur lors de la création de la playlist.");
+        }
+      } catch (error) {
+        console.error("Erreur:", error);
+        alert("Erreur lors de la création de la playlist.");
+      }
+    });
+  </script>
+</body>
+</html>

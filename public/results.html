@@ -1,0 +1,60 @@
+<!-- public/results.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Résultats des Duels</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: white;
+      text-align: center;
+    }
+    .result-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      padding: 20px;
+    }
+    .track {
+      background: #1e1e1e;
+      border-radius: 10px;
+      padding: 15px;
+      width: 200px;
+      text-align: center;
+    }
+    .track img {
+      width: 100%;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Résultats des Duels</h1>
+  <div class="result-container" id="resultContainer"></div>
+
+  <script>
+    async function loadResults() {
+      const response = await fetch("/results");
+      const data = await response.json();
+      const resultContainer = document.getElementById("resultContainer");
+      data.results.forEach(track => {
+        const trackDiv = document.createElement("div");
+        trackDiv.className = "track";
+        trackDiv.innerHTML = `
+          <img src="${track.image}" alt="${track.title}">
+          <h3>${track.title}</h3>
+          <p>${track.artist}</p>
+          <p>Points : ${track.score}</p>
+          <a href="${track.link}" target="_blank">Écouter</a>
+        `;
+        resultContainer.appendChild(trackDiv);
+      });
+    }
+    loadResults();
+  </script>
+</body>
+</html>
