@@ -21,7 +21,7 @@
     <div class="progress" id="progress"></div>
   </div>
   <div class="duel-container" id="duelContainer"></div>
-  <button class="btn" onclick="window.location.href='/ranking.html?access_token=' + accessToken">Voir le classement</button>
+  <button class="btn" onclick="window.location.href='/ranking.html'">Voir le classement</button>
 
   <script>
     // Récupérer le token d'accès depuis l'URL
@@ -66,28 +66,18 @@
         const track = duel[trackKey];
         const trackDiv = document.createElement("div");
         trackDiv.className = "track";
-
-        // On crée un conteneur pour la zone de vote (image, titre, artiste)
-        // et on ajoute un bouton séparé pour écouter la musique.
         trackDiv.innerHTML = `
-          <div class="vote-area">
-            <img src="${track.image}" alt="${track.title}">
-            <h3>${track.title}</h3>
-            <p>${track.artist}</p>
-          </div>
-          <button class="listen-btn">
-            <a href="${track.link}" target="_blank">🎵 Écouter</a>
-          </button>
+          <img src="${track.image}" alt="${track.title}">
+          <h3>${track.title}</h3>
+          <p>${track.artist}</p>
+          <button onclick="vote(${duel.id}, '${track.id}')">Voter</button>
+          <br>
+          <iframe style="border-radius:12px" 
+            src="https://open.spotify.com/embed/track/${track.id}?utm_source=generator" 
+            width="100%" height="80" frameBorder="0" 
+            allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
+          </iframe>
         `;
-
-        // La zone de vote déclenche le vote lorsqu'on clique dessus.
-        const voteArea = trackDiv.querySelector(".vote-area");
-        voteArea.addEventListener("click", () => vote(duel.id, track.id));
-
-        // Empêche le clic sur le bouton d'écoute de remonter vers le vote.
-        const listenBtn = trackDiv.querySelector(".listen-btn");
-        listenBtn.addEventListener("click", (e) => e.stopPropagation());
-
         duelContainer.appendChild(trackDiv);
       });
       updateProgress();
@@ -105,9 +95,7 @@
 
     // Fonction d'initialisation
     async function init() {
-      // Génère les duels à partir de vos titres likés
       await generateDuels();
-      // Puis charge le premier duel
       loadNextDuel();
     }
 
