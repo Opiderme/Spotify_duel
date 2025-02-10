@@ -15,7 +15,12 @@ add database.json with
 ```
 
 
-and run :
+add dependance :
 ```sh
 npm install express axios querystring dotenv open
+```
+
+run : 
+```sh
+node index.js
 ```
