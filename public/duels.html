@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Duels de Titres</title>
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background-color: #121212; color: white; text-align: center; }
     .progress-bar { width: 80%; background-color: grey; margin: 20px auto; height: 20px; border-radius: 10px; overflow: hidden; }
@@ -24,18 +25,33 @@
   <button class="btn" onclick="window.location.href='/ranking.html'">Voir le classement</button>
 
   <script>
-    // Récupérer le token d'accès depuis l'URL
     const urlParams = new URLSearchParams(window.location.search);
     const accessToken = urlParams.get("access_token");
+    let player;
+    let deviceId;
 
-    // Appeler la route pour générer les duels si nécessaire
+    // Initialisation du lecteur Spotify
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      player = new Spotify.Player({
+        name: "Duels Player",
+        getOAuthToken: cb => { cb(accessToken); },
+        volume: 0.5
+      });
+
+      player.addListener('ready', ({ device_id }) => {
+        console.log('Lecteur prêt avec Device ID', device_id);
+        deviceId = device_id;
+      });
+
+      player.connect();
+    };
+
     async function generateDuels() {
       const res = await fetch(`/generate-duels?access_token=${accessToken}`);
       const data = await res.json();
       console.log("Duels générés :", data);
     }
 
-    // Mettre à jour la barre de progression
     async function updateProgress() {
       const res = await fetch("/progress");
       const data = await res.json();
@@ -50,7 +66,6 @@
       document.body.insertBefore(duelCount, document.getElementById("duelContainer"));
     }
 
-    // Charger le prochain duel
     async function loadNextDuel() {
       const res = await fetch("/next-duel");
       const duel = await res.json();
@@ -70,20 +85,40 @@
           <img src="${track.image}" alt="${track.title}">
           <h3>${track.title}</h3>
           <p>${track.artist}</p>
-          <button onclick="vote(${duel.id}, '${track.id}')">Voter</button>
-          <br>
-          <iframe style="border-radius:12px" 
-            src="https://open.spotify.com/embed/track/${track.id}?utm_source=generator" 
-            width="100%" height="80" frameBorder="0" 
-            allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
-          </iframe>
         `;
+
+        trackDiv.addEventListener("mouseenter", () => playTrack(track.id));
+        trackDiv.addEventListener("mouseleave", () => pauseTrack());
+        trackDiv.onclick = () => vote(duel.id, track.id);
         duelContainer.appendChild(trackDiv);
       });
       updateProgress();
     }
 
-    // Envoi du vote
+    async function playTrack(trackId) {
+      if (!deviceId) {
+        console.error("Device ID non disponible");
+        return;
+      }
+      await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ uris: [`spotify:track:${trackId}`] })
+      });
+    }
+
+    async function pauseTrack() {
+      await fetch("https://api.spotify.com/v1/me/player/pause", {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`
+        }
+      });
+    }
+
     async function vote(duelId, winnerId) {
       await fetch("/vote", {
         method: "POST",
@@ -93,7 +128,6 @@
       loadNextDuel();
     }
 
-    // Fonction d'initialisation
     async function init() {
       await generateDuels();
       loadNextDuel();
@@ -102,4 +136,4 @@
     init();
   </script>
 </body>
-</html> 
+</html>
