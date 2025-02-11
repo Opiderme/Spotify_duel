@@ -13,6 +13,8 @@ const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI = "http://localhost:8888/callback";
 const SCOPES = "user-library-read playlist-modify-private playlist-modify-public streaming user-read-playback-state user-modify-playback-state";
+let accessToken = "";
+let refreshToken = "";
 
 app.use(express.json());
 app.use(express.static("public"));
@@ -42,29 +44,34 @@ app.get("/login", (req, res) => {
   res.redirect(authUrl);
 });
 
+// Route d'authentification
 app.get("/callback", async (req, res) => {
   const code = req.query.code || null;
-  try {
-    const response = await axios.post(
-      "https://accounts.spotify.com/api/token",
-      querystring.stringify({
-        grant_type: "authorization_code",
-        code: code,
-        redirect_uri: REDIRECT_URI,
-      }),
-      {
-        headers: {
-          Authorization: "Basic " + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64"),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
-    );
-    const { access_token } = response.data;
-    res.redirect(`/duels.html?access_token=${access_token}`);
-  } catch (error) {
-    console.error("Erreur lors de l'authentification :", error.response.data);
-    res.send("Erreur lors de l'authentification.");
+
+  const response = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64")}`,
+    },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code: code,
+      redirect_uri: REDIRECT_URI,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (data.access_token && data.refresh_token) {
+    accessToken = data.access_token;
+    refreshToken = data.refresh_token; // Stocke le refresh token
+    console.log("🔑 Token d'accès récupéré !");
+  } else {
+    console.error("❌ Erreur lors de l'authentification :", data);
   }
+
+  res.redirect(`/duels.html?access_token=${accessToken}`);
 });
 
 app.get("/generate-duels", async (req, res) => {
@@ -250,6 +257,42 @@ app.post("/create-playlist", async (req, res) => {
   }
 });
 
+// 🔄 Fonction pour rafraîchir le token
+async function refreshAccessToken() {
+  if (!refreshToken) {
+    console.error("❌ Aucun refresh token disponible !");
+    return;
+  }
+
+  const response = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64")}`,
+    },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (data.access_token) {
+    accessToken = data.access_token;
+    console.log("✅ Nouveau token d'accès récupéré !");
+  } else {
+    console.error("❌ Erreur lors du rafraîchissement du token :", data);
+  }
+}
+
+// 🔄 Rafraîchir le token automatiquement toutes les 55 minutes
+setInterval(refreshAccessToken, 55 * 60 * 1000);
+
+// Route pour obtenir le dernier token mis à jour
+app.get("/get-token", (req, res) => {
+  res.json({ access_token: accessToken });
+});
 
 
 app.listen(PORT, () => {

@@ -22,6 +22,7 @@
     <div class="progress" id="progress"></div>
   </div>
   <div class="duel-container" id="duelContainer"></div>
+  <input type="range" id="volumeSlider" min="0" max="100" value="50" oninput="setVolume(this.value)">
   <button class="btn" onclick="window.location.href='/ranking.html'">Voir le classement</button>
 
   <script>
@@ -115,6 +116,19 @@
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${accessToken}`
+        }
+      });
+    }
+
+    async function setVolume(volume) {
+      fetch("https://api.spotify.com/v1/me/player/volume?volume_percent=" + volume, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }).then(response => {
+        if (response.ok) {
+          console.log(`🔊 Volume réglé à ${volume}%`);
+        } else {
+          console.error("❌ Impossible de régler le volume");
         }
       });
     }
