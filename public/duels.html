@@ -31,21 +31,34 @@
     let player;
     let deviceId;
 
-    // Initialisation du lecteur Spotify
     window.onSpotifyWebPlaybackSDKReady = () => {
-      player = new Spotify.Player({
-        name: "Duels Player",
-        getOAuthToken: cb => { cb(accessToken); },
-        volume: 0.5
-      });
+        const token = accessToken;
+        const player = new Spotify.Player({
+            name: "My Web Player",
+            getOAuthToken: cb => { cb(token); },
+            volume: 0.5
+        });
 
-      player.addListener('ready', ({ device_id }) => {
-        console.log('Lecteur prêt avec Device ID', device_id);
-        deviceId = device_id;
-      });
+        // Ajoute le player à la fenêtre globale pour qu'il soit accessible partout
+        window.spotifyPlayer = player;
 
-      player.connect();
+        // Écoute l'événement "ready" pour récupérer le device_id
+        player.addListener("ready", ({ device_id }) => {
+            console.log("🎵 Lecteur Spotify prêt avec device_id:", device_id);
+            deviceId = device_id; // Stocke device_id globalement
+        });
+
+        player.addListener("not_ready", ({ device_id }) => {
+            console.log("⚠️ Lecteur Spotify déconnecté", device_id);
+        });
+
+        player.connect().then(success => {
+            if (success) {
+                console.log("✅ Connecté à Spotify !");
+            }
+        });
     };
+
 
     async function generateDuels() {
       const res = await fetch(`/generate-duels?access_token=${accessToken}`);
@@ -103,13 +116,22 @@
       }
       await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
+        headers: { 
+          "Authorization": `Bearer ${accessToken}`, 
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ uris: [`spotify:track:${trackId}`] })
-      });
+      })
+      .then(response => {
+        if (!response.ok) {
+          console.error("Erreur Spotify:", response.statusText);
+        }
+        return response.json();
+      })
+      .then(data => console.log("Réponse Spotify:", data))
+      .catch(error => console.error("Erreur API:", error));
     }
+
 
     async function pauseTrack() {
       await fetch("https://api.spotify.com/v1/me/player/pause", {
