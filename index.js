@@ -18,7 +18,8 @@ const SCOPES = [
   "user-read-email",
   "user-read-private",
   "user-modify-playback-state",
-  "user-read-playback-state"
+  "user-read-playback-state",
+  "user-library-read"
 ].join(" ");
 const TOKEN_FILE = "tokens.json";
 
