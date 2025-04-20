@@ -4,7 +4,6 @@ const axios = require("axios");
 const fs = require("fs");
 const querystring = require("querystring");
 const dotenv = require("dotenv");
-import("open").then((open) => open.default("http://localhost:8888/login"));
 
 dotenv.config();
 const app = express();
