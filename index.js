@@ -11,7 +11,7 @@ const app = express();
 const PORT = 8888;
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
-const REDIRECT_URI = "http://localhost:8888/callback";
+const REDIRECT_URI = "https://spotify-duel.onrender.com/callback";
 //const SCOPES = "user-library-read playlist-modify-private playlist-modify-public streaming user-read-playback-state user-modify-playback-state";
 const SCOPES = [
   "streaming",
