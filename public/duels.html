@@ -9,90 +9,62 @@
 </head>
 <body>
   <h1>Duels de Titres</h1>
-  <div class="progress-bar-global">
-    <div class="progress-global" id="progress"></div>
-  </div>
-  <div id="duelCount"></div>
   <div class="duel-container" id="duelContainer"></div>
   <input type="range" id="volumeSlider" min="0" max="100" value="50" oninput="setVolume(this.value)">
-  <button class="btn" onclick="window.location.href='/ranking.html'">Voir le classement</button>
+  <button class="btn" onclick="window.location.href='/ranking.html?access_token=' + accessToken">Voir le classement</button>
 
   <script>
-    // Récupération du token depuis l'URL
     const urlParams = new URLSearchParams(window.location.search);
     const accessToken = urlParams.get("access_token");
     let player;
     let deviceId;
+    let currentDuel = null;
 
-    // Initialisation du Spotify Web Playback SDK
     window.onSpotifyWebPlaybackSDKReady = () => {
-      const token = accessToken;
       player = new Spotify.Player({
         name: "My Web Player",
-        getOAuthToken: cb => { cb(token); },
+        getOAuthToken: cb => { cb(accessToken); },
         volume: 0.5
       });
 
-      // Stocke le player globalement
       window.spotifyPlayer = player;
 
-      // Récupère le deviceId lorsque le player est prêt
       player.addListener("ready", ({ device_id }) => {
-        console.log("🎵 Lecteur Spotify prêt avec device_id:", device_id);
         deviceId = device_id;
       });
 
       player.addListener("not_ready", ({ device_id }) => {
-        console.log("⚠️ Lecteur Spotify déconnecté", device_id);
+        console.log("Lecteur Spotify déconnecté", device_id);
       });
 
-      player.connect().then(success => {
-        if (success) {
-          console.log("✅ Connecté à Spotify !");
-        }
-      });
+      player.connect();
     };
 
-    // Génère les duels depuis le serveur
     async function generateDuels() {
       const res = await fetch(`/generate-duels?access_token=${accessToken}`);
       const data = await res.json();
-      console.log("Duels générés :", data);
+      console.log("Musiques chargées :", data);
     }
 
-    // Met à jour la progression globale des duels
-    async function updateProgress() {
-      const res = await fetch("/progress");
-      const data = await res.json();
-      document.getElementById("progress").style.width = data.progress + "%";
-      const duelCount = document.createElement("p");
-      duelCount.textContent = `Duels faits : ${data.completed} / ${data.total}`;
-      if (document.getElementById("duelCount")) {
-        document.getElementById("duelCount").remove();
-      }
-      duelCount.id = "duelCount";
-      document.body.insertBefore(duelCount, document.getElementById("duelContainer"));
-    }
-
-    // Charge le prochain duel et crée les cartes avec overlay
     async function loadNextDuel() {
       const res = await fetch("/next-duel");
       const duel = await res.json();
-      const duelContainer = document.getElementById("duelContainer");
-      duelContainer.innerHTML = "";
+      const container = document.getElementById("duelContainer");
+      container.innerHTML = "";
 
       if (duel.message) {
-        duelContainer.innerHTML = `<h2>${duel.message}</h2>`;
+        container.innerHTML = `<h2>${duel.message}</h2>`;
         return;
       }
 
-      ["track1", "track2"].forEach(trackKey => {
-        const track = duel[trackKey];
-        const trackDiv = document.createElement("div");
-        trackDiv.className = "track";
-        // Attribut pour identifier la carte avec l'ID du morceau
-        trackDiv.setAttribute("data-track-id", track.id);
-        trackDiv.innerHTML = `
+      currentDuel = duel;
+
+      ["track1", "track2"].forEach(key => {
+        const track = duel[key];
+        const div = document.createElement("div");
+        div.className = "track";
+        div.setAttribute("data-track-id", track.id);
+        div.innerHTML = `
           <img src="${track.image}" alt="${track.title}">
           <h3>${track.title}</h3>
           <p>${track.artist}</p>
@@ -100,42 +72,25 @@
             <div class="progress-bar"></div>
           </div>
         `;
-
-        // Au survol, lance la lecture et affiche la barre de progression
-        trackDiv.addEventListener("mouseenter", () => playTrack(track.id));
-        trackDiv.addEventListener("mouseleave", () => pauseTrack());
-        // Au clic, vote pour le titre
-        trackDiv.onclick = () => vote(duel.id, track.id);
-        duelContainer.appendChild(trackDiv);
+        div.addEventListener("mouseenter", () => playTrack(track.id));
+        div.addEventListener("mouseleave", pauseTrack);
+        div.onclick = () => vote(track.id);
+        container.appendChild(div);
       });
-      updateProgress();
     }
 
-    // Fonction pour jouer un morceau via Spotify Web API
     async function playTrack(trackId) {
-      if (!deviceId) {
-        console.error("Device ID non disponible");
-        return;
-      }
+      if (!deviceId) return;
       await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: "PUT",
-        headers: { 
-          "Authorization": `Bearer ${accessToken}`, 
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ uris: [`spotify:track:${trackId}`] })
-      })
-      .then(response => {
-        if (!response.ok) {
-          console.error("Erreur Spotify:", response.statusText);
-        }
-        return response.json().catch(() => {}); // Ignorer si le body est vide
-      })
-      .then(data => console.log("Réponse Spotify:", data))
-      .catch(error => console.error("Erreur API:", error));
+      });
     }
 
-    // Fonction pour mettre en pause la lecture
     async function pauseTrack() {
       await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`, {
         method: "PUT",
@@ -145,64 +100,23 @@
       });
     }
 
-    // Fonction pour régler le volume via le slider
     async function setVolume(volume) {
-      fetch("https://api.spotify.com/v1/me/player/volume?volume_percent=" + volume, {
+      await fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${volume}`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${accessToken}` }
-      }).then(response => {
-        if (response.ok) {
-          console.log(`🔊 Volume réglé à ${volume}%`);
-        } else {
-          console.error("❌ Impossible de régler le volume");
+        headers: {
+          "Authorization": `Bearer ${accessToken}`
         }
       });
     }
 
-    // Fonction pour voter pour un titre
-    async function vote(duelId, winnerId) {
+    async function vote(winnerId) {
       await fetch("/vote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ duelId, winnerId })
+        body: JSON.stringify({ winnerId, duelId: currentDuel.duelId })
       });
       loadNextDuel();
     }
-
-    // Formatage du temps en mm:ss
-    function formatTime(ms) {
-      const totalSeconds = Math.floor(ms / 1000);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-    }
-
-    // Mise à jour de la barre de progression dans la carte du morceau actuellement joué
-    setInterval(() => {
-      if (window.spotifyPlayer) {
-        window.spotifyPlayer.getCurrentState().then(state => {
-          console.log("State:", state);
-          if (state) {
-            const currentPos = state.position;
-            const duration = state.duration;
-            const progressPercent = (currentPos / duration) * 100;
-            // Rechercher la carte dont le data-track-id correspond au morceau en cours
-            const trackCard = document.querySelector(`.track[data-track-id="${state.track_window.current_track.id}"]`);
-            console.log("tracks " + trackCard);
-            if (trackCard) {
-              const progressBar = trackCard.querySelector(".progress-overlay .progress-bar");
-              console.log(progressBar);
-              if (progressBar) {
-                progressBar.style.width = progressPercent + "%";
-              }
-            }
-            console.log(`${formatTime(currentPos)} / ${formatTime(duration)}`);
-          } else {
-            console.log("Aucun état disponible");
-          }
-        });
-      }
-    }, 1000);
 
     async function init() {
       await generateDuels();
