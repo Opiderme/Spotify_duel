@@ -24,7 +24,9 @@ app.use(express.static("public"));
 
 const TOKEN_FILE = "tokens.json";
 let userTokens = {}; // En mémoire
-let { accessToken, refreshToken } = loadTokens();
+let accessToken = process.env.ACCESS_TOKEN || "";
+let refreshToken = process.env.REFRESH_TOKEN || "";
+
 
 
 // Elo update
