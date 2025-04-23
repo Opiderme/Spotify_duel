@@ -192,6 +192,41 @@ function loadTokens() {
   return {};
 }
 
+// =======================
+// 🔁 Rafraîchissement auto du token
+// =======================
+async function refreshAccessToken() {
+  console.log("🔁 Tentative de rafraîchissement du token...");
+  try {
+    const response = await fetch("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64")}`,
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.access_token) {
+      accessToken = data.access_token;
+      console.log("✅ Nouveau token d'accès rafraîchi !");
+    } else {
+      console.error("❌ Échec du rafraîchissement :", data);
+    }
+  } catch (err) {
+    console.error("❌ Erreur lors du refresh :", err.message);
+  }
+}
+
+// ⏱ Rafraîchir toutes les 55 minutes
+setInterval(refreshAccessToken, 55 * 60 * 1000);
+
+
 userTokens = loadTokens();
 
 app.listen(PORT, () => {
