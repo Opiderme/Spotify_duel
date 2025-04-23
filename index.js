@@ -29,6 +29,7 @@ let accessToken = process.env.ACCESS_TOKEN || "";
 let refreshToken = process.env.REFRESH_TOKEN || "";
 console.log("🧪 accessToken =", accessToken);
 console.log("🧪 accessToken =", accessToken);
+let { duels, scores } = loadDatabase();
 
 
 
@@ -103,25 +104,29 @@ app.get("/callback", async (req, res) => {
 app.get("/generate-duels", async (req, res) => {
   // Utilise le token global, pas celui passé en query
   try {
-    let allTracks = [];
-    let nextUrl = "https://api.spotify.com/v1/me/tracks?limit=50";
-    while (nextUrl) {
-      const response = await axios.get(nextUrl, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const pageTracks = response.data.items.map((item) => ({
-        id: item.track.id,
-        title: item.track.name,
-        artist: item.track.artists.map(a => a.name).join(", "),
-        image: item.track.album.images[0]?.url || "",
-        link: item.track.external_urls.spotify,
-        elo: 1000
-      }));
-      allTracks.push(...pageTracks);
-      nextUrl = response.data.next;
+    duels = [];
+    scores = {};
+
+    // Génère les duels (chaque paire unique de morceaux)
+    for (let i = 0; i < allTracks.length; i++) {
+      for (let j = i + 1; j < allTracks.length; j++) {
+        duels.push({
+          id: `${allTracks[i].id}_${allTracks[j].id}`,
+          track1: allTracks[i],
+          track2: allTracks[j],
+          voted: false,
+          winner: null,
+        });
+      }
     }
-    const data = { tracks: allTracks, duelHistory: [] };
-    saveDatabase({ duels: [], scores: {} });
+
+    // Initialise les scores
+    allTracks.forEach(track => {
+      scores[track.id] = 0;
+    });
+
+    saveDatabase({ duels, scores });
+
     res.json({ message: "Musiques chargées", total: allTracks.length });
   } catch (err) {
     console.error("Erreur /generate-duels :", err.response?.data || err.message);
@@ -130,30 +135,18 @@ app.get("/generate-duels", async (req, res) => {
 });
 
 app.get("/next-duel", (req, res) => {
-  const userId = req.query.user_id;
-  const data = loadUserData(userId);
-  const { tracks, duelHistory } = data;
-  if (tracks.length < 2) return res.json({ message: "Pas assez de morceaux" });
-
-  let i, j, duelId;
-  let attempts = 0;
-  do {
-    i = Math.floor(Math.random() * tracks.length);
-    j = Math.floor(Math.random() * tracks.length);
-    duelId = `${tracks[i].id}_${tracks[j].id}`;
-    attempts++;
-  } while ((i === j || duelHistory.find(d => d.duelId === duelId)) && attempts < 100);
-
-  if (attempts >= 100) {
-    return res.json({ message: "Tous les duels possibles ont été faits." });
+  console.log("📦 duels.length =", duels?.length);
+  if (!duels || duels.length === 0) {
+    return res.status(500).json({ error: "Aucun duel disponible. Vérifiez la génération des duels." });
   }
-
-  res.json({
-    duelId,
-    track1: tracks[i],
-    track2: tracks[j],
-  });
+  const nextDuel = duels.find((duel) => !duel.voted);
+  if (nextDuel) {
+    res.json(nextDuel);
+  } else {
+    res.json({ message: "Tous les duels sont terminés." });
+  }
 });
+
 
 app.post("/vote", (req, res) => {
   const { winnerId, duelId, user_id } = req.body;
@@ -248,7 +241,6 @@ setInterval(refreshAccessToken, 55 * 60 * 1000);
 
 userTokens = loadTokens();
 
-let { duels, scores } = loadDatabase();
 
 app.listen(PORT, () => {
   console.log(`Serveur ❤️ en ligne sur http://localhost:${PORT}`);
