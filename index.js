@@ -120,7 +120,7 @@ app.get("/generate-duels", async (req, res) => {
       nextUrl = response.data.next;
     }
     const data = { tracks: allTracks, duelHistory: [] };
-    //saveDatabase({ duels: [], scores: {} });
+    saveDatabase({ duels: [], scores: {} });
     res.json({ message: "Musiques chargées", total: allTracks.length });
   } catch (err) {
     console.error("Erreur /generate-duels :", err.response?.data || err.message);
@@ -192,6 +192,16 @@ function loadTokens() {
   }
   return {};
 }
+
+function saveDatabase(data) {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
+    console.log("💾 Base de données sauvegardée.");
+  } catch (err) {
+    console.error("❌ Erreur lors de la sauvegarde de la base de données :", err.message);
+  }
+}
+
 
 // =======================
 // 🔁 Rafraîchissement auto du token
