@@ -27,6 +27,8 @@ const TOKEN_FILE = "tokens.json";
 let userTokens = {}; // En mémoire
 let accessToken = process.env.ACCESS_TOKEN || "";
 let refreshToken = process.env.REFRESH_TOKEN || "";
+// ⏱ Rafraîchir toutes les 55 minutes
+setInterval(refreshAccessToken, 55 * 60 * 1000);
 console.log("🧪 accessToken =", accessToken);
 console.log("🧪 accessToken =", accessToken);
 let { duels, scores } = loadDatabase();
@@ -102,6 +104,9 @@ app.get("/callback", async (req, res) => {
 });
 
 app.get("/generate-duels", async (req, res) => {
+  if (!accessToken) {
+    await refreshAccessToken();
+  }
   try {
     let allTracks = [];
     let nextUrl = "https://api.spotify.com/v1/me/tracks?limit=50";
@@ -240,7 +245,6 @@ function loadDatabase() {
 // 🔁 Rafraîchissement auto du token
 // =======================
 async function refreshAccessToken() {
-  console.log("🔁 Tentative de rafraîchissement du token...");
   try {
     const response = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",
@@ -258,17 +262,15 @@ async function refreshAccessToken() {
 
     if (data.access_token) {
       accessToken = data.access_token;
-      console.log("✅ Nouveau token d'accès rafraîchi !");
+      console.log("✅ Nouveau access token récupéré !");
     } else {
-      console.error("❌ Échec du rafraîchissement :", data);
+      console.error("❌ Problème lors du refresh :", data);
     }
-  } catch (err) {
-    console.error("❌ Erreur lors du refresh :", err.message);
+  } catch (error) {
+    console.error("❌ Erreur réseau refreshAccessToken :", error.message);
   }
 }
 
-// ⏱ Rafraîchir toutes les 55 minutes
-setInterval(refreshAccessToken, 55 * 60 * 1000);
 
 
 userTokens = loadTokens();
