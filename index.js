@@ -195,7 +195,7 @@ function loadTokens() {
 
 function saveDatabase(data) {
   try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
+    fs.writeFileSync(database, JSON.stringify(data, null, 2), "utf-8");
     console.log("💾 Base de données sauvegardée.");
   } catch (err) {
     console.error("❌ Erreur lors de la sauvegarde de la base de données :", err.message);
