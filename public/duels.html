@@ -55,7 +55,7 @@
 
     // Génère les duels depuis le serveur
     async function generateDuels() {
-      const res = await fetch(`/generate-duels?access_token=${accessToken}`);
+      const res = await fetch("/generate-duels");
       const data = await res.json();
       console.log("Duels générés :", data);
     }
