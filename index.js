@@ -26,6 +26,8 @@ const TOKEN_FILE = "tokens.json";
 let userTokens = {}; // En mémoire
 let accessToken = process.env.ACCESS_TOKEN || "";
 let refreshToken = process.env.REFRESH_TOKEN || "";
+console.log("🧪 accessToken =", accessToken);
+console.log("🧪 accessToken =", accessToken);
 
 
 
