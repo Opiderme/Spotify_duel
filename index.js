@@ -120,7 +120,7 @@ app.get("/generate-duels", async (req, res) => {
       nextUrl = response.data.next;
     }
     const data = { tracks: allTracks, duelHistory: [] };
-    saveDatabase({ duels: [], scores: {} });
+    //saveDatabase({ duels: [], scores: {} });
     res.json({ message: "Musiques chargées", total: allTracks.length });
   } catch (err) {
     console.error("Erreur /generate-duels :", err.response?.data || err.message);
