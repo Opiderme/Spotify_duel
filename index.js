@@ -18,6 +18,7 @@ const SCOPES = [
   "user-modify-playback-state",
   "user-read-playback-state"
 ].join(" ");
+const DB_FILE = "database.json"; // Base de données principale
 
 app.use(express.json());
 app.use(express.static("public"));
@@ -195,11 +196,18 @@ function loadTokens() {
 
 function saveDatabase(data) {
   try {
-    fs.writeFileSync(database, JSON.stringify(data, null, 2), "utf-8");
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
     console.log("💾 Base de données sauvegardée.");
   } catch (err) {
     console.error("❌ Erreur lors de la sauvegarde de la base de données :", err.message);
   }
+}
+
+function loadDatabase() {
+  if (fs.existsSync(DB_FILE)) {
+    return JSON.parse(fs.readFileSync(DB_FILE, "utf-8"));
+  }
+  return { duels: [], scores: {} };
 }
 
 
