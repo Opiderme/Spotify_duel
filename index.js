@@ -248,6 +248,8 @@ setInterval(refreshAccessToken, 55 * 60 * 1000);
 
 userTokens = loadTokens();
 
+let { duels, scores } = loadDatabase();
+
 app.listen(PORT, () => {
   console.log(`Serveur ❤️ en ligne sur http://localhost:${PORT}`);
 });
