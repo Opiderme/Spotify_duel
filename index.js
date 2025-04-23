@@ -67,6 +67,7 @@ app.get("/login", (req, res) => {
     scope: SCOPES,
   })}`;
   res.redirect(authUrl);
+  refreshAccessToken(); // Appel initial pour obtenir le token d'accès
 });
 
 app.get("/callback", async (req, res) => {
