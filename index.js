@@ -105,23 +105,37 @@ app.get("/generate-duels", async (req, res) => {
   try {
     let allTracks = [];
     let nextUrl = "https://api.spotify.com/v1/me/tracks?limit=50";
-    
+
     while (nextUrl) {
-      const response = await axios.get(nextUrl, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const pageTracks = response.data.items.map((item) => ({
-        id: item.track.id,
-        title: item.track.name,
-        artist: item.track.artists.map(a => a.name).join(", "),
-        image: item.track.album.images[0]?.url || "",
-        link: item.track.external_urls.spotify
-      }));
-      allTracks.push(...pageTracks);
-      nextUrl = response.data.next;
+      try {
+        const response = await axios.get(nextUrl, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const pageTracks = response.data.items.map((item) => ({
+          id: item.track.id,
+          title: item.track.name,
+          artist: item.track.artists.map(a => a.name).join(", "),
+          image: item.track.album.images[0]?.url || "",
+          link: item.track.external_urls.spotify
+        }));
+        allTracks.push(...pageTracks);
+        nextUrl = response.data.next;
+      } catch (err) {
+        // Si token expiré → on le refresh et on recommence
+        if (err.response?.status === 401) {
+          console.warn("⚠️ Token expiré, tentative de refresh...");
+          await refreshAccessToken();
+          // Redémarre la boucle depuis le début
+          nextUrl = "https://api.spotify.com/v1/me/tracks?limit=50";
+          allTracks = [];
+          continue;
+        } else {
+          throw err;
+        }
+      }
     }
 
-    // ✅ Génération des duels
+    // Génération des duels
     duels = [];
     scores = {};
 
@@ -149,6 +163,7 @@ app.get("/generate-duels", async (req, res) => {
     res.status(500).json({ error: "Erreur lors du chargement des morceaux" });
   }
 });
+
 
 
 app.get("/next-duel", (req, res) => {
