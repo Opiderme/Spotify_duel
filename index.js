@@ -96,7 +96,6 @@ app.get("/callback", async (req, res) => {
 
 app.get("/generate-duels", async (req, res) => {
   // Utilise le token global, pas celui passé en query
-  const userId = req.query.user_id;
   try {
     let allTracks = [];
     let nextUrl = "https://api.spotify.com/v1/me/tracks?limit=50";
@@ -116,7 +115,7 @@ app.get("/generate-duels", async (req, res) => {
       nextUrl = response.data.next;
     }
     const data = { tracks: allTracks, duelHistory: [] };
-    saveUserData(userId, data);
+    saveDatabase({ duels: [], scores: {} });
     res.json({ message: "Musiques chargées", total: allTracks.length });
   } catch (err) {
     console.error("Erreur /generate-duels :", err.response?.data || err.message);
