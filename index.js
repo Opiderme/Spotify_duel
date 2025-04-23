@@ -102,12 +102,29 @@ app.get("/callback", async (req, res) => {
 });
 
 app.get("/generate-duels", async (req, res) => {
-  // Utilise le token global, pas celui passé en query
   try {
+    let allTracks = [];
+    let nextUrl = "https://api.spotify.com/v1/me/tracks?limit=50";
+    
+    while (nextUrl) {
+      const response = await axios.get(nextUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const pageTracks = response.data.items.map((item) => ({
+        id: item.track.id,
+        title: item.track.name,
+        artist: item.track.artists.map(a => a.name).join(", "),
+        image: item.track.album.images[0]?.url || "",
+        link: item.track.external_urls.spotify
+      }));
+      allTracks.push(...pageTracks);
+      nextUrl = response.data.next;
+    }
+
+    // ✅ Génération des duels
     duels = [];
     scores = {};
 
-    // Génère les duels (chaque paire unique de morceaux)
     for (let i = 0; i < allTracks.length; i++) {
       for (let j = i + 1; j < allTracks.length; j++) {
         duels.push({
@@ -115,24 +132,24 @@ app.get("/generate-duels", async (req, res) => {
           track1: allTracks[i],
           track2: allTracks[j],
           voted: false,
-          winner: null,
+          winner: null
         });
       }
     }
 
-    // Initialise les scores
     allTracks.forEach(track => {
       scores[track.id] = 0;
     });
 
     saveDatabase({ duels, scores });
 
-    res.json({ message: "Musiques chargées", total: allTracks.length });
+    res.json({ message: "Musiques et duels chargés", totalDuels: duels.length });
   } catch (err) {
     console.error("Erreur /generate-duels :", err.response?.data || err.message);
     res.status(500).json({ error: "Erreur lors du chargement des morceaux" });
   }
 });
+
 
 app.get("/next-duel", (req, res) => {
   console.log("📦 duels.length =", duels?.length);
