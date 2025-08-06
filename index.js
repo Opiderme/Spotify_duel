@@ -14,6 +14,7 @@ const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI = "http://localhost:8888/callback";
 //const SCOPES = "user-library-read playlist-modify-private playlist-modify-public streaming user-read-playback-state user-modify-playback-state";
 const SCOPES = [
+  "user-library-read",             // <- celui qui donne accès à /me/tracks
   "streaming",
   "user-read-email",
   "user-read-private",
