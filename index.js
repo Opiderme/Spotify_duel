@@ -4,14 +4,17 @@ const axios = require("axios");
 const fs = require("fs");
 const querystring = require("querystring");
 const dotenv = require("dotenv");
+import("open").then((open) => open.default("http://127.0.0.1:8888/login"));
+
 dotenv.config();
 const app = express();
 const PORT = 8888;
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
-const REDIRECT_URI = "https://spotify-duel.onrender.com/callback";
+const REDIRECT_URI = "http://127.0.0.1:8888/callback";
+//const SCOPES = "user-library-read playlist-modify-private playlist-modify-public streaming user-read-playback-state user-modify-playback-state";
 const SCOPES = [
-  "user-library-read",
+  "user-library-read",             // <- celui qui donne accès à /me/tracks
   "streaming",
   "user-read-email",
   "user-read-private",
@@ -277,5 +280,5 @@ userTokens = loadTokens();
 
 
 app.listen(PORT, () => {
-  console.log(`Serveur ❤️ en ligne sur http://localhost:${PORT}`);
+  console.log(`Serveur démarré sur http://127.0.0.1:${PORT}`);
 });
