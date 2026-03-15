@@ -13,7 +13,6 @@ logs/*.log
 
 # Environment Variables
 .env
-database.json
 tokens.json
 
 # Directory for the environment variable configurations
